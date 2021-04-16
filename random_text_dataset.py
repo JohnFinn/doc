@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 from PIL import Image, ImageFont, ImageDraw
 import random
+import os
 import string
 import textwrap
 import page_tree
@@ -36,10 +37,10 @@ def random_string(length: int):
 def random_page_tree(maxdepth: int):
     node = random.randint(0, 2)
     if node == 0 or maxdepth == 0:
-        font = ImageFont.truetype('/usr/share/fonts/TTF/Vera.ttf', random.randint(8, 16))
+        font = ImageFont.truetype(random.choice(os.listdir('/usr/share/fonts/TTF')), random.randint(8, 16))
         text = '    ' + random_string(3000)
         return page_tree.Pad(0.05, 0.05, 0.05, 0.05, page_tree.TextLeaf(font=font, text=text))
     elif node == 1:
-        return page_tree.YSplit(0.3 + 0.4 * random.random(), random_page_tree(maxdepth-1), random_page_tree(maxdepth-1))
+        return page_tree.YSplit(0.2 + 0.6 * random.random(), random_page_tree(maxdepth-1), random_page_tree(maxdepth-1))
     elif node == 2:
-        return page_tree.XSplit(0.3 + 0.4 * random.random(), random_page_tree(maxdepth-1), random_page_tree(maxdepth-1))
+        return page_tree.XSplit(0.2 + 0.6 * random.random(), random_page_tree(maxdepth-1), random_page_tree(maxdepth-1))
