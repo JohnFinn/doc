@@ -11,6 +11,9 @@ class Node:
     def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
         pass
 
+    def leafs(self) -> Iterable['Node']:
+        pass
+
 
 class YSplit:
 
@@ -36,6 +39,11 @@ class YSplit:
         abs_split = y1 + self.split * (y2 - y1)
         return (x1, y1, x2, abs_split), (x1, abs_split, x2, y2)
 
+    def leafs(self) -> Iterable[Node]:
+        yield from self.top.leafs()
+        yield from self.bottom.leafs()
+
+
 class XSplit:
 
     def __init__(self, split: float, left: Node, right: Node):
@@ -60,19 +68,23 @@ class XSplit:
         abs_split = x1 + self.split * (x2 - x1)
         return (x1, y1, abs_split, y2), (abs_split, y1, x2, y2)
 
+    def leafs(self) -> Iterable[Node]:
+        yield from self.left.leafs()
+        yield from self.right.leafs()
+
 
 class Pad:
 
     def __init__(self, top: float, left: float, bottom: float, right: float, node: Node):
-        self._ptop = top
-        self._pleft = left
-        self._pbottom = bottom
-        self._pright = right
-        self._node = node
+        self.ptop = top
+        self.pleft = left
+        self.pbottom = bottom
+        self.pright = right
+        self.node = node
 
     def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int], debug=False):
         padded_box = self.pad(box)
-        self._node.draw_on(draw, padded_box, debug)
+        self.node.draw_on(draw, padded_box, debug)
         if debug:
             self.draw_debug_info(draw, box)
 
@@ -83,36 +95,61 @@ class Pad:
     def pad(self, box: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
-        ptop = self._ptop * h
-        pbottom = self._pbottom * h
-        pleft = self._pleft * w
-        pright = self._pright * w
+        ptop = self.ptop * h
+        pbottom = self.pbottom * h
+        pleft = self.pleft * w
+        pright = self.pright * w
         return (x1 + pleft, y1 + ptop, x2 - pright, y2 - pbottom)
+
+    def leafs(self) -> Iterable[Node]:
+        yield from self.node.leafs()
+
+class Rotate(Node):
+
+    def __init__(self, angle: float, node: Node):
+        self.angle = angle
+        self.node = node
+
+    def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int], debug=False):
+        pass
+
+    def leafs(self) -> Iterable[Node]:
+        yield from self.node.leafs()
+
 
 class TextLeaf(Node):
 
     def __init__(self, text: str, font: ImageFont.FreeTypeFont):
-        self._font = font
-        self._text = text
+        self.font = font
+        self.text = text
 
     def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int], debug=False):
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
-        letter_width, letter_height = self._font.getsize('Z')
+        letter_width, letter_height = self.font.getsize('Z')
         letter_height += 4
         width = int(w // letter_width)
         height = int(h // letter_height)
-        wrapped_text = '\n'.join(textwrap.wrap(self._text, width=width)[:height])
-        self.text_bbox = draw.multiline_textbbox((x1, y1), text=wrapped_text, font=self._font)
-        draw.multiline_text((x1, y1), text=wrapped_text, font=self._font)
+        wrapped_text = '\n'.join(textwrap.wrap(self.text, width=width)[:height])
+        self.text_bbox = draw.multiline_textbbox((x1, y1), text=wrapped_text, font=self.font)
+        draw.multiline_text((x1, y1), text=wrapped_text, font=self.font)
         if debug:
             self.draw_debug_info(draw, box)
 
     def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
         draw.rectangle(self.text_bbox, outline='red')
 
+    def leafs(self) -> Iterable[Node]:
+        yield self
+
+
 class FormulaLeaf(Node):
-    pass
+
+    def leafs(self) -> Iterable[Node]:
+        yield self
+
 
 class ImageLeaf(Node):
-    pass
+
+    def leafs(self) -> Iterable[Node]:
+        yield self
