@@ -1,23 +1,13 @@
-from typing import Iterable
+from typing import Iterable, Tuple
 from PIL import ImageFont, ImageDraw, Image
 
 DEBUG = True
 
-class MoveDraw:
-    # Note: as you can see only text is supported
-
-    def __init__(self, imdraw: ImageDraw, func):
-        self._imdraw = imdraw
-        self._func = func
-        # TODO enforce evaluation of MoveDraw(MoveDraw(...))
-
-    def text(self, xy, *args, **kwargs):
-        return self._imdraw.text(self._func(xy), *args, **kwargs)
-
 class Node:
 
-    def draw_on(self, draw: ImageDraw):
+    def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
         pass
+
 
 
 class YSplit:
@@ -27,18 +17,15 @@ class YSplit:
         self.top = top
         self.bottom = bottom
 
-    def draw_on(self, draw: ImageDraw):
+    def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        x1, y1, x2, y2 = box
+        abs_split = y1 + self.split * (y2 - y1)
 
         if DEBUG:
-            draw.line(((0, self.split), (100, self.split)))
+            draw.line(((x1, abs_split), (x2, abs_split)))
 
-        self.top.draw_on(draw)
-
-        def move(xy):
-            x, y = xy
-            return x, self.split + y
-
-        self.bottom.draw_on(MoveDraw(draw, move))
+        self.top.draw_on(draw, (x1, y1, x2, abs_split))
+        self.bottom.draw_on(draw, (x1, abs_split, x2, y2))
 
 
 class XSplit:
@@ -48,43 +35,53 @@ class XSplit:
         self.left = left
         self.right = right
 
-    def draw_on(self, draw: ImageDraw):
+    def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        x1, y1, x2, y2 = box
+        abs_split = x1 + self.split * (x2 - x1)
         if DEBUG:
-            draw.line(((self.split, 0), (self.split, 100)))
+            draw.line(((abs_split, y1), (abs_split, y2)))
 
-        self.left.draw_on(draw)
-
-        def move(xy):
-            x, y = xy
-            return self.split + x, y
-
-        self.right.draw_on(MoveDraw(draw, move))
+        self.left.draw_on(draw, (x1, y1, abs_split, y2))
+        self.right.draw_on(draw, (abs_split, y1, x2, y2))
 
 class Pad:
 
-    def __init__(self, top: int, left: int, node: Node):
+    def __init__(self, top: float, left: float, bottom: float, right: float, node: Node):
         self._ptop = top
         self._pleft = left
+        self._pbottom = bottom
+        self._pright = right
         self._node = node
 
-    def draw_on(self, draw: ImageDraw):
-        def move(xy):
-            x, y = xy
-            return x + self._pleft, y + self._ptop
-        self._node.draw_on(MoveDraw(draw, move))
+    def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        x1, y1, x2, y2 = box
+        w, h = x2 - x1, y2 - y1
+        ptop = self._ptop * h
+        pbottom = self._pbottom * h
+        pleft = self._pleft * w
+        pright = self._pright * w
+        self._node.draw_on(draw, (x1 + pleft, y1 + ptop, x2 - pright, y2 - pbottom))
 
 
 class TextLeaf(Node):
 
-    def __init__(self, font: ImageFont.FreeTypeFont,  lines: Iterable[str]):
+    def __init__(self, text: str, font: ImageFont.FreeTypeFont):
         self._font = font
-        self._lines = lines
+        self._text = text
 
-    def draw_on(self, draw: ImageDraw):
+    def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        x1, y1, x2, y2 = box
+        w, h = x2 - x1, y2 - y1
         letter_width, letter_height = self._font.getsize('Z')
         line_height = int(letter_height * 1.2)
-        for line_no, line in enumerate(self._lines):
-            draw.text(xy=(0, line_no * line_height), text=line, font=self._font, fill='black')
+
+        line_count = h // line_height
+        line_len = w // letter_width
+
+        text_bbox = draw.multiline_textbbox((x1, y1), text=self._text, font=self._font)
+        if DEBUG:
+            draw.rectangle(text_bbox, outline='red')
+        draw.multiline_text((x1, y1), text=self._text, font=self._font)
 
 
 
