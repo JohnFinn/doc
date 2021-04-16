@@ -73,18 +73,22 @@ class Pad:
         self._node = node
 
     def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        padded_box = self.pad(box)
+        self._node.draw_on(draw, padded_box)
+
+    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        padded_box = self.pad(box)
+        draw.rectangle(padded_box)
+        self._node.draw_debug_info(draw, padded_box)
+
+    def pad(self, box: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
         ptop = self._ptop * h
         pbottom = self._pbottom * h
         pleft = self._pleft * w
         pright = self._pright * w
-        self._node.draw_on(draw, (x1 + pleft, y1 + ptop, x2 - pright, y2 - pbottom))
-
-    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
-        pass
-
-
+        return (x1 + pleft, y1 + ptop, x2 - pright, y2 - pbottom)
 
 class TextLeaf(Node):
 
