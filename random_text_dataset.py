@@ -22,16 +22,8 @@ class RandomTextDataset(Dataset):
         line_height = int(letter_height * 1.2)
 
 
-        # tree = page_tree.XSplit(
-            # 0.5,
-            # page_tree.YSplit(0.5,
-                # page_tree.Pad(0.05, 0.05, 0.05, 0.05, page_tree.TextLeaf(font=self._font, text='\n'.join(textwrap.wrap(random_string(line_len * line_cnt), width=line_len))) ),
-                # page_tree.Pad(0.05, 0.05, 0.05, 0.05, page_tree.TextLeaf(font=self._font, text='\n'.join(textwrap.wrap(random_string(line_len * line_cnt), width=line_len))) )
-            # ),
-            # page_tree.Pad(0.05, 0.05, 0.05, 0.05, page_tree.TextLeaf(font=self._font, text='\n'.join(textwrap.wrap(random_string(line_len * line_cnt), width=line_len))) )
-        # )
         tree = random_page_tree(maxdepth=4)
-        img = Image.new('L', (700, 500), 'white')
+        img = Image.new('L', (1800, 1000), 'white')
         draw = ImageDraw.Draw(img)
         tree.draw_on(draw, (0, 0, img.width, img.height))
 
@@ -43,8 +35,8 @@ def random_string(length: int):
 def random_page_tree(maxdepth: int):
     node = random.randint(0, 2)
     if node == 0 or maxdepth == 0:
-        font = ImageFont.truetype('/usr/share/fonts/TTF/Vera.ttf', 16)
-        text = '    ' + random_string(300)
+        font = ImageFont.truetype('/usr/share/fonts/TTF/Vera.ttf', random.randint(8, 16))
+        text = '    ' + random_string(3000)
         return page_tree.Pad(0.05, 0.05, 0.05, 0.05, page_tree.TextLeaf(font=font, text=text))
     elif node == 1:
         return page_tree.YSplit(0.3 + 0.4 * random.random(), random_page_tree(maxdepth-1), random_page_tree(maxdepth-1))

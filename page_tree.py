@@ -1,4 +1,5 @@
 import textwrap
+import math
 from typing import Iterable, Tuple
 from PIL import ImageFont, ImageDraw, Image
 
@@ -74,8 +75,10 @@ class TextLeaf(Node):
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
         letter_width, letter_height = self._font.getsize('Z')
+        letter_height += 4
         width = int(w // letter_width)
-        wrapped_text = '\n'.join(textwrap.wrap(self._text, width=width))
+        height = int(h // letter_height)
+        wrapped_text = '\n'.join(textwrap.wrap(self._text, width=width)[:height])
         text_bbox = draw.multiline_textbbox((x1, y1), text=wrapped_text, font=self._font)
         if DEBUG:
             draw.rectangle(text_bbox, outline='red')
