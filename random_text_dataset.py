@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 from PIL import Image, ImageFont, ImageDraw
 import random
 import string
-from page_tree import *
+import page_tree
 
 class RandomTextDataset(Dataset):
 
@@ -21,10 +21,10 @@ class RandomTextDataset(Dataset):
         line_height = int(letter_height * 1.2)
 
 
-        tree = PageTreeXSplit(
+        tree = page_tree.XSplit(
             250,
-            PageTreePad(50, 50, PageTreeTextLeaf(self._font, (random_string(line_len) for _ in range(line_cnt))) ),
-            PageTreePad(50, 50, PageTreeTextLeaf(self._font, (random_string(line_len) for _ in range(line_cnt))) )
+            page_tree.Pad(50, 50, page_tree.TextLeaf(self._font, (random_string(line_len) for _ in range(line_cnt))) ),
+            page_tree.Pad(50, 50, page_tree.TextLeaf(self._font, (random_string(line_len) for _ in range(line_cnt))) )
         )
         img = Image.new('L', (700, 500), 'white')
         draw = ImageDraw.Draw(img)

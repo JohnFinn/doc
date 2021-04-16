@@ -14,15 +14,15 @@ class MoveDraw:
     def text(self, xy, *args, **kwargs):
         return self._imdraw.text(self._func(xy), *args, **kwargs)
 
-class PageTreeNode:
+class Node:
 
     def draw_on(self, draw: ImageDraw):
         pass
 
 
-class PageTreeYSplit:
+class YSplit:
 
-    def __init__(self, split: float, top: PageTreeNode, bottom: PageTreeNode):
+    def __init__(self, split: float, top: Node, bottom: Node):
         self.split = split
         self.top = top
         self.bottom = bottom
@@ -41,9 +41,9 @@ class PageTreeYSplit:
         self.bottom.draw_on(MoveDraw(draw, move))
 
 
-class PageTreeXSplit:
+class XSplit:
 
-    def __init__(self, split: float, left: PageTreeNode, right: PageTreeNode):
+    def __init__(self, split: float, left: Node, right: Node):
         self.split = split
         self.left = left
         self.right = right
@@ -60,9 +60,9 @@ class PageTreeXSplit:
 
         self.right.draw_on(MoveDraw(draw, move))
 
-class PageTreePad:
+class Pad:
 
-    def __init__(self, top: int, left: int, node: PageTreeNode):
+    def __init__(self, top: int, left: int, node: Node):
         self._ptop = top
         self._pleft = left
         self._node = node
@@ -74,7 +74,7 @@ class PageTreePad:
         self._node.draw_on(MoveDraw(draw, move))
 
 
-class PageTreeTextLeaf(PageTreeNode):
+class TextLeaf(Node):
 
     def __init__(self, font: ImageFont.FreeTypeFont,  lines: Iterable[str]):
         self._font = font
@@ -88,8 +88,8 @@ class PageTreeTextLeaf(PageTreeNode):
 
 
 
-class PageTreeFormulaLeaf(PageTreeNode):
+class FormulaLeaf(Node):
     pass
 
-class PageTreeImageLeaf(PageTreeNode):
+class ImageLeaf(Node):
     pass
