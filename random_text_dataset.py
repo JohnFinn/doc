@@ -6,30 +6,14 @@ import string
 import textwrap
 import page_tree
 
-class RandomTextDataset(Dataset):
-
-    def __init__(self, length: int, font = ImageFont.truetype('/usr/share/fonts/TTF/Vera.ttf', 16)):
-        self._length = length
-        self._font = font
-        super().__init__()
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, idx: int):
-        letter_width, letter_height = self._font.getsize('Z')
-        line_len = 30
-        line_cnt = 10
-        line_height = int(letter_height * 1.2)
-
-
-        tree = random_page_tree(mindepth=1, maxdepth=3)
-        img = Image.new('L', (900, 500), 'white')
-        draw = ImageDraw.Draw(img)
-        tree.draw_on(draw, (0, 0, img.width, img.height), debug=False)
-        for leaf in tree.leafs():
-            leaf.draw_debug_info(draw, None)
-        return img
+def random_page():
+    tree = random_page_tree(mindepth=1, maxdepth=3)
+    img = Image.new('L', (900, 500), 'white')
+    draw = ImageDraw.Draw(img)
+    tree.draw_on(draw, (0, 0, img.width, img.height), debug=False)
+    for leaf in tree.leafs():
+        leaf.draw_debug_info(draw, None)
+    return img
 
 def random_string(length: int):
     return ''.join((random.choice(string.ascii_letters + ' ' * 10) for _ in range(length)))
