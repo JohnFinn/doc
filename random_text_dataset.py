@@ -26,6 +26,7 @@ class RandomTextDataset(Dataset):
         img = Image.new('L', (1800, 1000), 'white')
         draw = ImageDraw.Draw(img)
         tree.draw_on(draw, (0, 0, img.width, img.height))
+        tree.draw_debug_info(draw, (0, 0, img.width, img.height))
 
         return img
 

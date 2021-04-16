@@ -3,13 +3,13 @@ import math
 from typing import Iterable, Tuple
 from PIL import ImageFont, ImageDraw, Image
 
-DEBUG = True
-
 class Node:
 
     def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
         pass
 
+    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        pass
 
 
 class YSplit:
@@ -20,15 +20,22 @@ class YSplit:
         self.bottom = bottom
 
     def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        top_box, bottom_box = self.ysplit(box)
+        self.top.draw_on(draw, top_box)
+        self.bottom.draw_on(draw, bottom_box)
+
+    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
         x1, y1, x2, y2 = box
         abs_split = y1 + self.split * (y2 - y1)
+        draw.line(((x1, abs_split), (x2, abs_split)))
+        top_box, bottom_box = self.ysplit(box)
+        self.top.draw_debug_info(draw, top_box)
+        self.bottom.draw_debug_info(draw, bottom_box)
 
-        if DEBUG:
-            draw.line(((x1, abs_split), (x2, abs_split)))
-
-        self.top.draw_on(draw, (x1, y1, x2, abs_split))
-        self.bottom.draw_on(draw, (x1, abs_split, x2, y2))
-
+    def ysplit(self, box: Tuple[int, int, int, int]) -> (Tuple[int, int, int, int], Tuple[int, int, int, int]):
+        x1, y1, x2, y2 = box
+        abs_split = y1 + self.split * (y2 - y1)
+        return (x1, y1, x2, abs_split), (x1, abs_split, x2, y2)
 
 class XSplit:
 
@@ -38,13 +45,23 @@ class XSplit:
         self.right = right
 
     def draw_on(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        left_box, right_box = self.xsplit(box)
+        self.left.draw_on(draw, left_box)
+        self.right.draw_on(draw, right_box)
+
+    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
         x1, y1, x2, y2 = box
         abs_split = x1 + self.split * (x2 - x1)
-        if DEBUG:
-            draw.line(((abs_split, y1), (abs_split, y2)))
+        draw.line(((abs_split, y1), (abs_split, y2)))
+        left_box, right_box = self.xsplit(box)
+        self.left.draw_debug_info(draw, left_box)
+        self.right.draw_debug_info(draw, right_box)
 
-        self.left.draw_on(draw, (x1, y1, abs_split, y2))
-        self.right.draw_on(draw, (abs_split, y1, x2, y2))
+    def xsplit(self, box: Tuple[int, int, int, int]) -> (Tuple[int, int, int, int], Tuple[int, int, int, int]):
+        x1, y1, x2, y2 = box
+        abs_split = x1 + self.split * (x2 - x1)
+        return (x1, y1, abs_split, y2), (abs_split, y1, x2, y2)
+
 
 class Pad:
 
@@ -64,6 +81,10 @@ class Pad:
         pright = self._pright * w
         self._node.draw_on(draw, (x1 + pleft, y1 + ptop, x2 - pright, y2 - pbottom))
 
+    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        pass
+
+
 
 class TextLeaf(Node):
 
@@ -79,12 +100,11 @@ class TextLeaf(Node):
         width = int(w // letter_width)
         height = int(h // letter_height)
         wrapped_text = '\n'.join(textwrap.wrap(self._text, width=width)[:height])
-        text_bbox = draw.multiline_textbbox((x1, y1), text=wrapped_text, font=self._font)
-        if DEBUG:
-            draw.rectangle(text_bbox, outline='red')
+        self.text_bbox = draw.multiline_textbbox((x1, y1), text=wrapped_text, font=self._font)
         draw.multiline_text((x1, y1), text=wrapped_text, font=self._font)
 
-
+    def draw_debug_info(self, draw: ImageDraw, box: Tuple[int, int, int, int]):
+        draw.rectangle(self.text_bbox, outline='red')
 
 class FormulaLeaf(Node):
     pass
