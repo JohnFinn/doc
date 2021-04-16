@@ -26,9 +26,7 @@ class RandomTextDataset(Dataset):
         tree = random_page_tree(maxdepth=4)
         img = Image.new('L', (1800, 1000), 'white')
         draw = ImageDraw.Draw(img)
-        tree.draw_on(draw, (0, 0, img.width, img.height))
-        tree.draw_debug_info(draw, (0, 0, img.width, img.height))
-
+        tree.draw_on(draw, (0, 0, img.width, img.height), debug=True)
         return img
 
 def random_string(length: int):
