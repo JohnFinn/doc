@@ -24,22 +24,21 @@ class YSplit:
         self.bottom = bottom
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
-        draw = ImageDraw.Draw(image)
         top_box, bottom_box = self.ysplit(box)
-        self.top.draw_on(draw, top_box, debug)
-        self.bottom.draw_on(draw, bottom_box, debug)
+        self.top.draw_on(image, top_box, debug)
+        self.bottom.draw_on(image, bottom_box, debug)
         if debug:
-            self.draw_debug_info(draw, box)
+            self.draw_debug_info(image, box)
 
     def draw_debug_info(self, image: Image, box: BoxT):
         draw = ImageDraw.Draw(image)
         x1, y1, x2, y2 = box
-        abs_split = y1 + self.split * (y2 - y1)
+        abs_split = int(y1 + self.split * (y2 - y1))
         draw.line(((x1, abs_split), (x2, abs_split)))
 
     def ysplit(self, box: BoxT) -> (BoxT, BoxT):
         x1, y1, x2, y2 = box
-        abs_split = y1 + self.split * (y2 - y1)
+        abs_split = int(y1 + self.split * (y2 - y1))
         return (x1, y1, x2, abs_split), (x1, abs_split, x2, y2)
 
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
@@ -56,22 +55,21 @@ class XSplit:
         self.right = right
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
-        draw = ImageDraw.Draw(image)
         left_box, right_box = self.xsplit(box)
-        self.left.draw_on(draw, left_box, debug)
-        self.right.draw_on(draw, right_box, debug)
+        self.left.draw_on(image, left_box, debug)
+        self.right.draw_on(image, right_box, debug)
         if debug:
-            self.draw_debug_info(draw, box)
+            self.draw_debug_info(image, box)
 
     def draw_debug_info(self, image: Image, box: BoxT):
         draw = ImageDraw.Draw(image)
         x1, y1, x2, y2 = box
-        abs_split = x1 + self.split * (x2 - x1)
+        abs_split = int(x1 + self.split * (x2 - x1))
         draw.line(((abs_split, y1), (abs_split, y2)))
 
     def xsplit(self, box: BoxT) -> (BoxT, BoxT):
         x1, y1, x2, y2 = box
-        abs_split = x1 + self.split * (x2 - x1)
+        abs_split = int(x1 + self.split * (x2 - x1))
         return (x1, y1, abs_split, y2), (abs_split, y1, x2, y2)
 
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
@@ -90,11 +88,10 @@ class Pad:
         self.node = node
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
-        draw = ImageDraw.Draw(image)
         padded_box = self.pad(box)
-        self.node.draw_on(draw, padded_box, debug)
+        self.node.draw_on(image, padded_box, debug)
         if debug:
-            self.draw_debug_info(draw, box)
+            self.draw_debug_info(image, box)
 
     def draw_debug_info(self, image: Image, box: BoxT):
         draw = ImageDraw.Draw(image)
@@ -121,17 +118,15 @@ class Rotate(Node):
         self.node = node
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
-        draw = ImageDraw.Draw(image)
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
         img = Image.new('L', (w, h), 'white')
-        draw = ImageDraw.Draw(img)
-        self.node.draw_on(draw, box, debug=debug)
-        img.rotate(self.angle, expand=True, fillcolor='white')
+        self.node.draw_on(img, box, debug=debug)
+        rotated = img.rotate(self.angle, expand=True, fillcolor='white').resize((w, h))
+        image.paste(rotated, box=box)
 
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        # yield from self.node.leafs()
-        raise NotImplementedError("rotation not implemented")
+        yield from self.node.leafs(box)
 
 
 class TextLeaf(Node):
@@ -152,7 +147,7 @@ class TextLeaf(Node):
         self.text_bbox = draw.multiline_textbbox((x1, y1), text=wrapped_text, font=self.font)
         draw.multiline_text((x1, y1), text=wrapped_text, font=self.font)
         if debug:
-            self.draw_debug_info(draw, box)
+            self.draw_debug_info(image, box)
 
     def draw_debug_info(self, image: Image, box: BoxT):
         draw = ImageDraw.Draw(image)

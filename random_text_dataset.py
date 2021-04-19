@@ -9,9 +9,7 @@ import page_tree
 def random_page():
     tree = random_page_tree(mindepth=1, maxdepth=3)
     img = Image.new('L', (210 * 3, 297 * 3), 'white')
-    for leaf, box in tree.leafs((0, 0, img.width, img.height)):
-        leaf.draw_on(img, box)
-        leaf.draw_debug_info(img, None)
+    tree.draw_on(img, (0, 0, img.width, img.height), debug=True)
     return img
 
 def random_string(length: int):
@@ -19,9 +17,9 @@ def random_string(length: int):
 
 def random_page_tree(mindepth: int, maxdepth: int):
     if mindepth == 0:
-        node = random.randint(0, 2)
+        node = random.randint(0, 3)
     else:
-        node = random.randint(1, 2)
+        node = random.randint(1, 3)
 
     if node == 0 or maxdepth == 0:
         font = ImageFont.truetype(random.choice(os.listdir('/usr/share/fonts/TTF')), random.randint(8, 16))
@@ -31,3 +29,5 @@ def random_page_tree(mindepth: int, maxdepth: int):
         return page_tree.YSplit(0.2 + 0.6 * random.random(), random_page_tree(mindepth-1, maxdepth-1), random_page_tree(mindepth-1, maxdepth-1))
     elif node == 2:
         return page_tree.XSplit(0.2 + 0.6 * random.random(), random_page_tree(mindepth-1, maxdepth-1), random_page_tree(mindepth-1, maxdepth-1))
+    elif node == 3:
+        return page_tree.Rotate(random.random() * 360, random_page_tree(mindepth, maxdepth))
