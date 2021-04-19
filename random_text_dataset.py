@@ -8,10 +8,10 @@ import page_tree
 
 def random_page():
     tree = random_page_tree(mindepth=1, maxdepth=3)
-    img = Image.new('L', (900, 500), 'white')
+    img = Image.new('L', (210 * 3, 297 * 3), 'white')
     draw = ImageDraw.Draw(img)
-    tree.draw_on(draw, (0, 0, img.width, img.height), debug=False)
-    for leaf in tree.leafs():
+    for leaf, box in tree.leafs((0, 0, img.width, img.height)):
+        leaf.draw_on(draw, box)
         leaf.draw_debug_info(draw, None)
     return img
 
