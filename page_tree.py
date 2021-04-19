@@ -7,10 +7,10 @@ BoxT = Tuple[int, int, int, int]
 
 class Node:
 
-    def draw_on(self, draw: ImageDraw, box: BoxT, debug=False):
+    def draw_on(self, image: Image, box: BoxT, debug=False):
         pass
 
-    def draw_debug_info(self, draw: ImageDraw, box: BoxT):
+    def draw_debug_info(self, image: Image, box: BoxT):
         pass
 
     def leafs(self, box: BoxT) -> Iterable[Tuple['Node', BoxT]]:
@@ -23,14 +23,16 @@ class YSplit:
         self.top = top
         self.bottom = bottom
 
-    def draw_on(self, draw: ImageDraw, box: BoxT, debug=False):
+    def draw_on(self, image: Image, box: BoxT, debug=False):
+        draw = ImageDraw.Draw(image)
         top_box, bottom_box = self.ysplit(box)
         self.top.draw_on(draw, top_box, debug)
         self.bottom.draw_on(draw, bottom_box, debug)
         if debug:
             self.draw_debug_info(draw, box)
 
-    def draw_debug_info(self, draw: ImageDraw, box: BoxT):
+    def draw_debug_info(self, image: Image, box: BoxT):
+        draw = ImageDraw.Draw(image)
         x1, y1, x2, y2 = box
         abs_split = y1 + self.split * (y2 - y1)
         draw.line(((x1, abs_split), (x2, abs_split)))
@@ -53,14 +55,16 @@ class XSplit:
         self.left = left
         self.right = right
 
-    def draw_on(self, draw: ImageDraw, box: BoxT, debug=False):
+    def draw_on(self, image: Image, box: BoxT, debug=False):
+        draw = ImageDraw.Draw(image)
         left_box, right_box = self.xsplit(box)
         self.left.draw_on(draw, left_box, debug)
         self.right.draw_on(draw, right_box, debug)
         if debug:
             self.draw_debug_info(draw, box)
 
-    def draw_debug_info(self, draw: ImageDraw, box: BoxT):
+    def draw_debug_info(self, image: Image, box: BoxT):
+        draw = ImageDraw.Draw(image)
         x1, y1, x2, y2 = box
         abs_split = x1 + self.split * (x2 - x1)
         draw.line(((abs_split, y1), (abs_split, y2)))
@@ -85,13 +89,15 @@ class Pad:
         self.pright = right
         self.node = node
 
-    def draw_on(self, draw: ImageDraw, box: BoxT, debug=False):
+    def draw_on(self, image: Image, box: BoxT, debug=False):
+        draw = ImageDraw.Draw(image)
         padded_box = self.pad(box)
         self.node.draw_on(draw, padded_box, debug)
         if debug:
             self.draw_debug_info(draw, box)
 
-    def draw_debug_info(self, draw: ImageDraw, box: BoxT):
+    def draw_debug_info(self, image: Image, box: BoxT):
+        draw = ImageDraw.Draw(image)
         padded_box = self.pad(box)
         draw.rectangle(padded_box)
 
@@ -114,8 +120,14 @@ class Rotate(Node):
         self.angle = angle
         self.node = node
 
-    def draw_on(self, draw: ImageDraw, box: BoxT, debug=False):
-        pass
+    def draw_on(self, image: Image, box: BoxT, debug=False):
+        draw = ImageDraw.Draw(image)
+        x1, y1, x2, y2 = box
+        w, h = x2 - x1, y2 - y1
+        img = Image.new('L', (w, h), 'white')
+        draw = ImageDraw.Draw(img)
+        self.node.draw_on(draw, box, debug=debug)
+        img.rotate(self.angle, expand=True, fillcolor='white')
 
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
         # yield from self.node.leafs()
@@ -128,7 +140,8 @@ class TextLeaf(Node):
         self.font = font
         self.text = text
 
-    def draw_on(self, draw: ImageDraw, box: BoxT, debug=False):
+    def draw_on(self, image: Image, box: BoxT, debug=False):
+        draw = ImageDraw.Draw(image)
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
         letter_width, letter_height = self.font.getsize('Z')
@@ -141,7 +154,8 @@ class TextLeaf(Node):
         if debug:
             self.draw_debug_info(draw, box)
 
-    def draw_debug_info(self, draw: ImageDraw, box: BoxT):
+    def draw_debug_info(self, image: Image, box: BoxT):
+        draw = ImageDraw.Draw(image)
         draw.rectangle(self.text_bbox, outline='red')
 
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
