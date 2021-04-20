@@ -13,9 +13,6 @@ class Node:
     def draw_debug_info(self, image: Image, box: BoxT):
         pass
 
-    def leafs(self, box: BoxT) -> Iterable[Tuple['Node', BoxT]]:
-        pass
-
     def children(self):
         yield from range(0)
 
@@ -63,11 +60,6 @@ class YSplit(Node):
         abs_split = int(y1 + self.split * (y2 - y1))
         return (x1, y1, x2, abs_split), (x1, abs_split, x2, y2)
 
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        top, bottom = self.ysplit(box)
-        yield from self.top.leafs(top)
-        yield from self.bottom.leafs(bottom)
-
     def children(self):
         yield self.top
         yield self.bottom
@@ -100,11 +92,6 @@ class XSplit(Node):
         x1, y1, x2, y2 = box
         abs_split = int(x1 + self.split * (x2 - x1))
         return (x1, y1, abs_split, y2), (abs_split, y1, x2, y2)
-
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        left, right = self.xsplit(box)
-        yield from self.left.leafs(left)
-        yield from self.right.leafs(right)
 
     def children(self):
         yield self.left
@@ -143,9 +130,6 @@ class Pad(Node):
         pright = self.pright * w
         return (x1 + pleft, y1 + ptop, x2 - pright, y2 - pbottom)
 
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        yield from self.node.leafs(self.pad(box))
-
     def children(self):
         yield self.node
 
@@ -167,15 +151,13 @@ class Rotate(Node):
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
         img = Image.new('L', (w, h), 'white')
-        self.node.draw_on(img, box, debug=debug)
+        self.node.draw_on(img, (0,0,w,h), debug=debug)
         if debug:
             draw = ImageDraw.Draw(img)
-            draw.rectangle((x1, y1, x2-1, y2-1))
+            # draw.rectangle((x1, y1, x2-1, y2-1))
+            draw.rectangle((1,1,w-1,h-1))
         rotated = img.rotate(self.angle, expand=True, fillcolor='white').resize((w, h))
         image.paste(rotated, box=box)
-
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        yield from self.node.leafs(box)
 
     def children(self):
         yield self.node
@@ -208,17 +190,9 @@ class TextLeaf(Node):
         draw = ImageDraw.Draw(image)
         draw.rectangle(self.text_bbox, outline='red')
 
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        yield self, box
-
 
 class FormulaLeaf(Node):
-
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        yield self, box
-
+    pass
 
 class ImageLeaf(Node):
-
-    def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
-        yield self, box
+    pass
