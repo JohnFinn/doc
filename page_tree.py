@@ -16,12 +16,34 @@ class Node:
     def leafs(self, box: BoxT) -> Iterable[Tuple['Node', BoxT]]:
         pass
 
-class YSplit:
+    def children(self):
+        yield from range(0)
+
+    def __repr__(self):
+        stack = []
+        stack.append((self, 0))
+        result = ''
+        while stack:
+            top, d = stack.pop()
+            result += ' ' * d + top.__class__.__name__ + ' ' + top.info()
+            for c in top.children():
+                stack.append((c, d + 1))
+            result += '\n'
+        return result
+
+    def info(self):
+        return ''
+
+
+class YSplit(Node):
 
     def __init__(self, split: float, top: Node, bottom: Node):
         self.split = split
         self.top = top
         self.bottom = bottom
+
+    def info(self):
+        return f'{self.split}'
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
         top_box, bottom_box = self.ysplit(box)
@@ -46,13 +68,20 @@ class YSplit:
         yield from self.top.leafs(top)
         yield from self.bottom.leafs(bottom)
 
+    def children(self):
+        yield self.top
+        yield self.bottom
 
-class XSplit:
+
+class XSplit(Node):
 
     def __init__(self, split: float, left: Node, right: Node):
         self.split = split
         self.left = left
         self.right = right
+
+    def info(self):
+        return f'{self.split}'
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
         left_box, right_box = self.xsplit(box)
@@ -77,8 +106,12 @@ class XSplit:
         yield from self.left.leafs(left)
         yield from self.right.leafs(right)
 
+    def children(self):
+        yield self.left
+        yield self.right
 
-class Pad:
+
+class Pad(Node):
 
     def __init__(self, top: float, left: float, bottom: float, right: float, node: Node):
         self.ptop = top
@@ -86,6 +119,9 @@ class Pad:
         self.pbottom = bottom
         self.pright = right
         self.node = node
+
+    def info(self):
+        return f'{self.ptop} {self.pleft} {self.pbottom} {self.pright}'
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
         padded_box = self.pad(box)
@@ -110,23 +146,39 @@ class Pad:
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
         yield from self.node.leafs(self.pad(box))
 
+    def children(self):
+        yield self.node
+
 
 class Rotate(Node):
 
     def __init__(self, angle: float, node: Node):
-        self.angle = angle
-        self.node = node
+        if isinstance(node, Rotate):
+            self.angle = (angle + node.angle) % 360
+            self.node = node.node
+        else:
+            self.angle = angle % 360
+            self.node = node
+
+    def info(self):
+        return f'{self.angle}'
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
         x1, y1, x2, y2 = box
         w, h = x2 - x1, y2 - y1
         img = Image.new('L', (w, h), 'white')
         self.node.draw_on(img, box, debug=debug)
+        if debug:
+            draw = ImageDraw.Draw(img)
+            draw.rectangle((x1, y1, x2-1, y2-1))
         rotated = img.rotate(self.angle, expand=True, fillcolor='white').resize((w, h))
         image.paste(rotated, box=box)
 
     def leafs(self, box: BoxT) -> Iterable[Tuple[Node, BoxT]]:
         yield from self.node.leafs(box)
+
+    def children(self):
+        yield self.node
 
 
 class TextLeaf(Node):
@@ -134,6 +186,9 @@ class TextLeaf(Node):
     def __init__(self, text: str, font: ImageFont.FreeTypeFont):
         self.font = font
         self.text = text
+
+    def info(self):
+        return f'{self.font.path} {self.font.size} "{self.text[:10]}..."'
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
         draw = ImageDraw.Draw(image)
