@@ -1,9 +1,13 @@
 import textwrap
 import math
+import numpy as np
 from typing import Iterable, Tuple
 from PIL import ImageFont, ImageDraw, Image
 
 BoxT = Tuple[int, int, int, int]
+
+PointT = Tuple[float, float]
+BorderT = Tuple[PointT, PointT, PointT, PointT]
 
 class Node:
 
@@ -13,7 +17,10 @@ class Node:
     def draw_debug_info(self, image: Image, box: BoxT):
         pass
 
-    def children(self):
+    def children_border(self, border: np.ndarray) -> Iterable[Tuple['Node', np.ndarray]]:
+        yield from range(0)
+
+    def children(self) -> Iterable['Node']:
         yield from range(0)
 
     def __repr__(self):
@@ -22,11 +29,19 @@ class Node:
         result = ''
         while stack:
             top, d = stack.pop()
-            result += ' ' * d + top.__class__.__name__ + ' ' + top.info()
             for c in top.children():
                 stack.append((c, d + 1))
-            result += '\n'
+            result += ' ' * d + top.__class__.__name__ + ' ' + top.info() + '\n'
         return result
+
+    def traverse(self, border: np.ndarray):
+        stack = []
+        stack.append((self, border))
+        while stack:
+            top, border = stack.pop()
+            for c, b in top.children_border(border):
+                stack.append((c, b))
+            yield top, border
 
     def info(self):
         return ''
@@ -64,6 +79,14 @@ class YSplit(Node):
         yield self.top
         yield self.bottom
 
+    def children_border(self, border: np.ndarray) -> Iterable[Tuple[Node, np.ndarray]]:
+        split = np.array([
+            border[1] + (border[2] - border[1]) * self.split,
+            border[0] + (border[3] - border[0]) * self.split
+        ])
+        yield self.top, np.array([*border[:2], *split])
+        yield self.bottom, np.array([*split[::-1], *border[2:]])
+
 
 class XSplit(Node):
 
@@ -96,6 +119,14 @@ class XSplit(Node):
     def children(self):
         yield self.left
         yield self.right
+
+    def children_border(self, border: np.ndarray) -> Iterable[Tuple[Node, np.ndarray]]:
+        split = np.array([
+            border[0] + (border[1] - border[0]) * self.split,
+            border[3] + (border[2] - border[3]) * self.split
+        ])
+        yield self.left, np.array([border[0], *split, border[3]])
+        yield self.right, np.array([split[0], border[1], border[2], split[1]])
 
 
 class Pad(Node):
@@ -133,19 +164,26 @@ class Pad(Node):
     def children(self):
         yield self.node
 
+    def children_border(self, border: np.ndarray) -> Iterable[Tuple[Node, np.ndarray]]:
+        # pad = np.array([
+            # border[0] + (border[1] - border[0]) * self.split,
+            # border[3] + (border[2] - border[3]) * self.split
+        # ])
+        # TODO
+        yield self.node, border
 
 class Rotate(Node):
 
-    def __init__(self, angle: float, node: Node):
+    def __init__(self, angle_deg: float, node: Node):
         if isinstance(node, Rotate):
-            self.angle = (angle + node.angle) % 360
+            self.angle_deg = (angle_deg + node.angle_deg) % 360
             self.node = node.node
         else:
-            self.angle = angle % 360
+            self.angle_deg = angle_deg % 360
             self.node = node
 
     def info(self):
-        return f'{self.angle}'
+        return f'{self.angle_deg}'
 
     def draw_on(self, image: Image, box: BoxT, debug=False):
         x1, y1, x2, y2 = box
@@ -156,11 +194,19 @@ class Rotate(Node):
             draw = ImageDraw.Draw(img)
             # draw.rectangle((x1, y1, x2-1, y2-1))
             draw.rectangle((1,1,w-1,h-1))
-        rotated = img.rotate(self.angle, expand=True, fillcolor='white').resize((w, h))
+        rotated = img.rotate(self.angle_deg, expand=True, fillcolor='white').resize((w, h))
         image.paste(rotated, box=box)
 
     def children(self):
         yield self.node
+
+    def children_border(self, border: np.ndarray) -> Iterable[Tuple[Node, np.ndarray]]:
+        angle_rad = self.angle_deg * math.pi / 180
+        rotation = np.array([
+            [math.cos(angle_rad), -math.sin(angle_rad)],
+            [math.sin(angle_rad),  math.cos(angle_rad)]
+        ])
+        yield self.node, border @ rotation
 
 
 class TextLeaf(Node):
