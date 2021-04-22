@@ -192,21 +192,25 @@ class Rotate(Node):
         self.node.draw_on(img, (0,0,w,h), debug=debug)
         if debug:
             draw = ImageDraw.Draw(img)
-            # draw.rectangle((x1, y1, x2-1, y2-1))
             draw.rectangle((1,1,w-1,h-1))
-        rotated = img.rotate(self.angle_deg, expand=True, fillcolor='white').resize((w, h))
+        rotated = img.rotate(self.angle_deg, fillcolor='white')
         image.paste(rotated, box=box)
 
     def children(self):
         yield self.node
 
     def children_border(self, border: np.ndarray) -> Iterable[Tuple[Node, np.ndarray]]:
-        angle_rad = self.angle_deg * math.pi / 180
+        center = (border.min(axis=0) + border.max(axis=0)) / 2
+
+
+        angle_rad = -self.angle_deg * math.pi / 180
         rotation = np.array([
             [math.cos(angle_rad), -math.sin(angle_rad)],
             [math.sin(angle_rad),  math.cos(angle_rad)]
         ])
-        yield self.node, border @ rotation
+        import pdb
+        pdb.set_trace()
+        yield self.node, (rotation @ (border - center).T).T + center
 
 
 class TextLeaf(Node):
