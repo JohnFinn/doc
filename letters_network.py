@@ -4,22 +4,13 @@ from torch import nn, optim, no_grad, exp
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from pandas import read_csv
-from string import ascii_lowercase, ascii_uppercase
 from time import time
-
-
-def letters_dataset() -> dict:
-    letters = dict()
-    cyr_u = 'БГДЁЖЗИЙЛПФЦЧШЩЪЫЬЭЮЯ'
-    cyr_l = cyr_u.lower() + 'мнт'
-    for counter, item in enumerate(ascii_lowercase + ascii_uppercase + cyr_l + cyr_u):
-        letters[item] = counter
-    return letters
+from make_dataset import unique_letters_set
 
 
 class LettersDataset(Dataset):
 
-    letters = letters_dataset()
+    letters = unique_letters_set()
 
     def __init__(self, df, transform=None):
         self.df = df

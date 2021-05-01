@@ -1,40 +1,53 @@
-from os import walk, getcwd
-from string import ascii_lowercase, ascii_uppercase
+import os.path
+
 from PIL import Image, ImageFont, ImageDraw
+from string import ascii_lowercase, ascii_uppercase
 from csv import writer
+from os import walk
 
 
-def generate_letter_image(letter, row_writer, alphabet):
-    for font_file in next(walk(getcwd() + '/fonts'))[2]:
-        img = Image.new('L', (32, 32), 'white')
-        font = ImageFont.truetype(getcwd() + '/fonts/' + font_file, 32)
-        draw = ImageDraw.Draw(img)
-        w, h = draw.textsize(letter, font=font)
-        draw.text(((img.width - w) / 2, (img.height - h) / 2), letter, font=font, fill='black')
-        for i in range(13):
-            for angle in range(-10, 10, 1):
-                rot_im = img.rotate(angle, expand=False, fillcolor='white')
-                filepath = f'dataset_letters/{letter}_{alphabet}_{angle}_{font_file[:-4]}_{i}.png'
-                rot_im.save(filepath, 'PNG')
-                row_writer.writerow([filepath, letter])
+def unique_letters_set() -> dict:
+    letters = dict()
+    cyr_u = 'БГДЁЖЗИЙЛПФЦЧШЩЪЫЬЭЮЯ'
+    cyr_l = cyr_u.lower() + 'мнт'
+    for counter, item in enumerate(ascii_lowercase + ascii_uppercase + cyr_l + cyr_u):
+        letters[item] = counter
+    return letters
 
 
-def main():
-    with open(getcwd() + '/letters.csv', 'w') as file:
-        row_writer = writer(file, delimiter=',')
-        row_writer.writerow(['filepath', 'letter'])
-        for i in list(ascii_lowercase):
-            generate_letter_image(i, row_writer, 'l')
-        for i in list(ascii_uppercase):
-            generate_letter_image(i, row_writer, 'l')
-        cyrillic_unique_upper = 'БГДЁЖЗИЙЛПФЦЧШЩЪЫЬЭЮЯ'
-        cyrillic_unique_lower = 'бгдёжзиймнптфцчшщъыьэюя'
-        for letter in cyrillic_unique_upper:
-            generate_letter_image(letter, row_writer, 'c')
-        for letter in cyrillic_unique_lower:
-            generate_letter_image(letter, row_writer, 'c')
+class LetterImage:
+
+    def __init__(self, letter: str, width: int, height: int, font: ImageFont):
+        self.__image = Image.new('L', (width, height), 'white')
+        draw = ImageDraw.Draw(self.__image)
+        letter_width, letter_height = draw.textsize(letter, font=font)
+        average = lambda x, y: (x + y) / 2
+        draw.text((average(width, -letter_width), average(height, -letter_height)),
+                  letter, font=font, fill='black')
+
+    def rotate(self, angle: int):
+        self.__image = self.__image.rotate(angle, expand=False, fillcolor='white')
+
+    def save(self, filepath: str, format: str):
+        self.__image.save(filepath, format)
 
 
-if __name__ == '__main__':
-    main()
+def generate_letter_image(letter: str, row_writer, font_path: str, image_format: str, image_size: int):
+    font = ImageFont.truetype(font_path, image_size)
+    img = LetterImage(letter, image_size, image_size, font)
+    for angle in range(-20, 21, 2):
+        img.rotate(angle)
+        filepath = f'dataset_letters/{letter}_{angle}_{font_path.split("/")[-1].split(".")[0]}.png'
+        img.save(filepath, image_format)
+        img.rotate(-angle)
+        row_writer.writerow([filepath, letter])
 
+
+def make_letter_dataset(fonts_directory: str, csv_file, image_format: str, image_size: int):
+    with open(csv_file, 'w') as output:
+        row_writer = writer(output, delimiter=',')
+        for letter in unique_letters_set():
+            for _, _, font_files in walk(fonts_directory):
+                for font_file in font_files:
+                    generate_letter_image(letter, row_writer, os.path.join(fonts_directory, font_file),
+                                          image_format, image_size)
