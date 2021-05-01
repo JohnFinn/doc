@@ -1,58 +1,61 @@
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.pyplot import figure
-# from scipy.signal import savgol_filter
+from skimage.filters import threshold_yen
+from skimage.exposure import rescale_intensity
+from scipy.signal import argrelextrema
 
 
-def box_around_letter_open_cv():
-    image_file = 'test.png'
-    img = cv2.imread(image_file)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-    img_erode = cv2.erode(thresh, np.ones((2, 2), np.uint8), iterations=1)
-
-    contours, hierarchy = cv2.findContours(img_erode, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    output = img_erode.copy()
-
-    contours.sort(key=lambda c1: cv2.boundingRect(c1)[0])
-    for idx, contour in enumerate(contours):
-        (x, y, w, h) = cv2.boundingRect(contour)
-        letter_img = output[y:y + h, x:x + w]
-        cv2.imwrite('result_words/' + str(idx) + '.png', letter_img)
-        cv2.rectangle(output, (x, y), (x + w, y + h), (1, 0, 0), 1)
-
-    cv2.imwrite('output.png', output)
-    # cv2.imwrite('../erode.png', img_erode)
+def image_preparation(image: np.ndarray, xscale, yscale):
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = rescale_intensity(image, (0, threshold_yen(image)), (0, 255))
+    thresh_img = cv2.erode(image, np.ones((yscale, xscale), np.uint8), iterations=1)
+    _, thresh_img = cv2.threshold(thresh_img, 250, 255, cv2.THRESH_BINARY)
+    return thresh_img
 
 
-def box_around_letter_histogram():
-    figure(figsize=(20, 6))
-    gray = cv2.cvtColor(cv2.imread('test.png'), cv2.COLOR_BGR2GRAY)
-    _, thresh_img = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
-    thresh_img = cv2.erode(thresh_img, np.ones((1, 1), np.uint8), iterations=1)
-    plt.imshow(thresh_img, 'gray', vmin=0, vmax=255)
-    v_black_count_x = np.vectorize(lambda s: int(s / 255))
-    v_black_count_y = np.vectorize(lambda s: thresh_img.shape[1] - int(s / 255))
-    counts_y = v_black_count_y(np.sum(thresh_img, axis=1))
-    white_lines = list(np.where(counts_y == 0)[0])
-    images_lines = [] if white_lines[0] == 0 else [thresh_img[0:white_lines[0]]]
-    for i in range(len(white_lines) - 1):
-        if white_lines[i] + 1 == white_lines[i + 1]:
-            continue
-        images_lines.append(thresh_img[white_lines[i]:white_lines[i + 1], ])
-        cv2.imwrite('result_lines/' + str(i) + '.png', images_lines[len(images_lines) - 1])
-    for i, line in enumerate(images_lines):
-        counts_x = v_black_count_x(np.sum(line, axis=0))
-        spaces = list(np.where(counts_x == line.shape[0])[0])
-        if len(spaces) == 0:
-            continue
-        letters = [] if spaces[0] == 0 else [line[:, 0:spaces[0]]]
-        for j in range(len(spaces) - 1):
-            if spaces[j] + 1 == spaces[j + 1]:
-                continue
-            letters.append(line[:, spaces[j]:spaces[j + 1]])
-        for j, letter in enumerate(letters):
-            cv2.imwrite('result_letters/' + str(i) + '_' + str(j) + '.png', letter)
+def black_points_count(image: np.ndarray, axis: int):
+    count = np.vectorize(lambda s: image.shape[axis] - int(s / 255))
+    return count(np.sum(image, axis=axis))
 
-    # plt.show()
+
+def extract_lines(original_image: np.ndarray) -> list:
+    gray_image = image_preparation(original_image, 2, 1)
+    count_y = black_points_count(gray_image, 1)
+    extremum_lines = [extr for extr in argrelextrema(count_y, np.less_equal, order=2)[0] if count_y[extr] <= 20]
+    text_lines = []
+    prev_line = 0
+    for line in extremum_lines:
+        if prev_line + 1 < line:
+            text_lines.append(original_image[prev_line:line, ])
+        prev_line = line
+    if prev_line != original_image.shape[0] - 1:
+        text_lines.append(original_image[prev_line:original_image.shape[0] - 1, ])
+    return text_lines
+
+
+def extract_words(line: np.ndarray) -> list:
+    count_x = black_points_count(image_preparation(line, 3, 1), 0)
+    spaces = [extr for extr in argrelextrema(count_x, np.less_equal, order=2)[0] if count_x[extr] == 0]
+    if len(spaces) == 0:
+        return []
+    words = [] if spaces[0] == 0 else [line[:, 0:spaces[0]]]
+    prev_space = 0
+    for space in spaces:
+        if prev_space + 1 < space:
+            words.append(line[:, prev_space:space])
+        prev_space = space
+    return words
+
+
+def extract_letters(word: np.ndarray) -> list:
+    count_x = black_points_count(image_preparation(word, 1, 3), 0)
+    spaces = [extr for extr in argrelextrema(count_x, np.less_equal, order=2)[0] if count_x[extr] <= 5]
+    if len(spaces) == 0:
+        return []
+    words = [] if spaces[0] == 0 else [word[:, 0:spaces[0]]]
+    prev_space = 0
+    for space in spaces:
+        if prev_space + 1 < space:
+            words.append(word[:, prev_space:space])
+        prev_space = space
+    return words
